@@ -327,13 +327,13 @@ async function ensureDefaultAccounts() {
   const { users } = collections();
   const defaultUsers = [
     {
-      email: "teacher@example.com",
+      email: "teacher@gmail.com",
       password: "teacher123",
       role: "pro",
       fullName: "Priya Instructor"
     },
     {
-      email: "maya@example.com",
+      email: "maya@gmail.com",
       password: "student123",
       role: "user",
       fullName: "Maya Sharma"
@@ -907,9 +907,18 @@ app.post("/api/auth", async (req, res) => {
   const password = String(req.body.password || "").trim();
   const role = req.body.role === "pro" ? "pro" : "user";
   const profile = req.body.profile || {};
+  const isGmailEmail = /^[^@\s]+@gmail\.com$/i.test(email);
 
   if (!mode || !email || !password) {
     return res.status(400).json({ error: "Mode, email, and password are required." });
+  }
+
+  if (!isGmailEmail) {
+    return res.status(400).json({ error: "Email must be a valid Gmail address ending with @gmail.com." });
+  }
+
+  if (password.length < 6) {
+    return res.status(400).json({ error: "Password must be at least 6 characters long." });
   }
 
   try {

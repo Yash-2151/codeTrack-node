@@ -43,6 +43,7 @@ const ROLE_ALLOWED_PAGES = {
   ])
 };
 let activeCaptchaAnswer = null;
+const GMAIL_EMAIL_PATTERN = /^[^@\s]+@gmail\.com$/i;
 
 function normalizeRole(role) {
   if (role === "teacher") return TEACHER_ROLE;
@@ -117,6 +118,14 @@ function resolvePostAuthDestination(role, requestedPage = "") {
   const fallback = DEFAULT_REDIRECTS[normalizeRole(role)] || "index.html";
   if (!requestedPage) return fallback;
   return canRoleAccessPage(role, requestedPage) ? normalizePageName(requestedPage) : fallback;
+}
+
+function isValidGmailEmail(email) {
+  return GMAIL_EMAIL_PATTERN.test(String(email || "").trim());
+}
+
+function isValidPassword(password) {
+  return String(password || "").length >= 6;
 }
 
 function currentUserName() {
@@ -234,9 +243,19 @@ function wireAuthForm(form) {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const role = document.querySelector(".segmented-btn.active")?.dataset.role || "user";
-    const email = form.querySelector("input[type='email']")?.value;
-    const password = form.querySelector("input[type='password']")?.value;
+    const email = (form.querySelector("input[type='email']")?.value || "").trim().toLowerCase();
+    const password = form.querySelector("input[type='password']")?.value || "";
     const mode = form.id === "signupForm" ? "signup" : "login";
+
+    if (!isValidGmailEmail(email)) {
+      toast("Email must be a valid Gmail address ending with @gmail.com.", true);
+      return;
+    }
+
+    if (!isValidPassword(password)) {
+      toast("Password must be at least 6 characters long.", true);
+      return;
+    }
 
     if (mode === "signup") {
       const confirmPassword = document.getElementById("signupConfirmPassword")?.value || "";
@@ -357,6 +376,13 @@ function wireSignupValidation() {
     if (!confirmPasswordInput.value) {
       passwordMessage.textContent = "";
       passwordMessage.className = "form-helper hidden";
+      return;
+    }
+
+    if (!isValidPassword(passwordInput.value) || !isValidPassword(confirmPasswordInput.value)) {
+      passwordMessage.textContent = "Password must be at least 6 characters long.";
+      passwordMessage.className = "form-helper error";
+      passwordMessage.classList.remove("hidden");
       return;
     }
 

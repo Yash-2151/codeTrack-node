@@ -72,15 +72,15 @@
             </label>
             <label>
               <span>Email</span>
-              <input type="email" placeholder="you@example.com" required>
+              <input type="email" placeholder="you@gmail.com" pattern=".+@gmail\.com$" title="Enter a valid Gmail address ending with @gmail.com" required>
             </label>
             <label>
               <span>Password</span>
-              <input id="signupPassword" type="password" placeholder="Create a password" required>
+              <input id="signupPassword" type="password" placeholder="Create a password" minlength="6" title="Password must be at least 6 characters long" required>
             </label>
             <label>
               <span>Confirm password</span>
-              <input id="signupConfirmPassword" type="password" placeholder="Re-enter your password" required>
+              <input id="signupConfirmPassword" type="password" placeholder="Re-enter your password" minlength="6" title="Password must be at least 6 characters long" required>
             </label>
             <p class="form-helper hidden" id="passwordMatchMessage"></p>
             <!-- Basic human verification section for the demo signup flow -->
