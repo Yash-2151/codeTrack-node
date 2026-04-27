@@ -70,10 +70,12 @@
               <span>Email</span>
               <input type="email" placeholder="you@gmail.com" pattern=".+@gmail\.com$" title="Enter a valid Gmail address ending with @gmail.com" required>
             </label>
+            <p class="form-helper hidden" id="authEmailMessage" data-email-message></p>
             <label>
               <span>Password</span>
               <input type="password" placeholder="••••••••" minlength="6" title="Password must be at least 6 characters long" required>
             </label>
+            <p class="form-helper hidden" id="authPasswordMessage" data-password-message></p>
             <div class="checkbox">
               <input type="checkbox" id="remember">
               <label for="remember">Remember me</label>

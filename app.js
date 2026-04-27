@@ -128,6 +128,91 @@ function isValidPassword(password) {
   return String(password || "").length >= 6;
 }
 
+function setHelperMessage(element, message = "", type = "") {
+  if (!element) return;
+  if (!message) {
+    element.textContent = "";
+    element.className = "form-helper hidden";
+    return;
+  }
+
+  element.textContent = message;
+  element.className = `form-helper ${type}`.trim();
+  element.classList.remove("hidden");
+}
+
+function wireAuthFieldValidation(form) {
+  if (!form) return;
+  const emailInput = form.querySelector("input[type='email']");
+  const passwordInput =
+    form.id === "signupForm"
+      ? document.getElementById("signupPassword")
+      : form.querySelector("input[type='password']");
+  const confirmPasswordInput = document.getElementById("signupConfirmPassword");
+  const emailMessage = form.querySelector("[data-email-message]");
+  const passwordMessage = form.querySelector("[data-password-message]");
+  const confirmPasswordMessage = document.getElementById("passwordMatchMessage");
+
+  const validateEmail = () => {
+    if (!emailInput) return true;
+    if (!emailInput.value.trim()) {
+      setHelperMessage(emailMessage);
+      return false;
+    }
+    if (!isValidGmailEmail(emailInput.value)) {
+      setHelperMessage(emailMessage, "Use a Gmail address ending with @gmail.com.", "error");
+      return false;
+    }
+    setHelperMessage(emailMessage);
+    return true;
+  };
+
+  const validatePassword = () => {
+    if (!passwordInput) return true;
+    if (!passwordInput.value) {
+      setHelperMessage(passwordMessage);
+      return false;
+    }
+    if (!isValidPassword(passwordInput.value)) {
+      setHelperMessage(passwordMessage, "Password should be at least 6 characters long.", "error");
+      return false;
+    }
+    setHelperMessage(passwordMessage);
+    return true;
+  };
+
+  const validateConfirmPassword = () => {
+    if (!confirmPasswordInput || !confirmPasswordMessage) return true;
+    if (!confirmPasswordInput.value) {
+      setHelperMessage(confirmPasswordMessage);
+      return false;
+    }
+    if (!isValidPassword(confirmPasswordInput.value) || !isValidPassword(passwordInput?.value || "")) {
+      setHelperMessage(confirmPasswordMessage, "Password should be at least 6 characters long.", "error");
+      return false;
+    }
+    if ((passwordInput?.value || "") !== confirmPasswordInput.value) {
+      setHelperMessage(confirmPasswordMessage, "Password and confirm password do not match.", "error");
+      return false;
+    }
+    setHelperMessage(confirmPasswordMessage, "Passwords match.", "success");
+    return true;
+  };
+
+  emailInput?.addEventListener("input", validateEmail);
+  passwordInput?.addEventListener("input", () => {
+    validatePassword();
+    validateConfirmPassword();
+  });
+  confirmPasswordInput?.addEventListener("input", validateConfirmPassword);
+
+  return {
+    validateEmail,
+    validatePassword,
+    validateConfirmPassword
+  };
+}
+
 function currentUserName() {
   return localStorage.getItem("codetrack_user_name") || "";
 }
@@ -240,6 +325,7 @@ function setActiveRole(role) {
 
 function wireAuthForm(form) {
   if (!form) return;
+  const fieldValidation = wireAuthFieldValidation(form);
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const role = document.querySelector(".segmented-btn.active")?.dataset.role || "user";
@@ -248,11 +334,13 @@ function wireAuthForm(form) {
     const mode = form.id === "signupForm" ? "signup" : "login";
 
     if (!isValidGmailEmail(email)) {
+      fieldValidation?.validateEmail?.();
       toast("Email must be a valid Gmail address ending with @gmail.com.", true);
       return;
     }
 
     if (!isValidPassword(password)) {
+      fieldValidation?.validatePassword?.();
       toast("Password must be at least 6 characters long.", true);
       return;
     }
@@ -260,41 +348,24 @@ function wireAuthForm(form) {
     if (mode === "signup") {
       const confirmPassword = document.getElementById("signupConfirmPassword")?.value || "";
       const captchaAnswer = (document.getElementById("captchaAnswer")?.value || "").trim();
-      const passwordMessage = document.getElementById("passwordMatchMessage");
       const captchaMessage = document.getElementById("captchaMessage");
 
       if (password !== confirmPassword) {
-        if (passwordMessage) {
-          passwordMessage.textContent = "Password and confirm password must match.";
-          passwordMessage.className = "form-helper error";
-          passwordMessage.classList.remove("hidden");
-        }
+        fieldValidation?.validateConfirmPassword?.();
         toast("Password and confirm password must match.", true);
         return;
       }
 
-      if (passwordMessage) {
-        passwordMessage.textContent = "Passwords match.";
-        passwordMessage.className = "form-helper success";
-        passwordMessage.classList.remove("hidden");
-      }
+      fieldValidation?.validateConfirmPassword?.();
 
       if (!captchaAnswer || captchaAnswer !== activeCaptchaAnswer) {
-        if (captchaMessage) {
-          captchaMessage.textContent = "Captcha verification failed. Please try again.";
-          captchaMessage.className = "form-helper error";
-          captchaMessage.classList.remove("hidden");
-        }
+        setHelperMessage(captchaMessage, "Captcha verification failed. Please try again.", "error");
         setupCaptcha();
         toast("Captcha verification failed.", true);
         return;
       }
 
-      if (captchaMessage) {
-        captchaMessage.textContent = "Captcha verified.";
-        captchaMessage.className = "form-helper success";
-        captchaMessage.classList.remove("hidden");
-      }
+      setHelperMessage(captchaMessage, "Captcha verified.", "success");
     }
 
     try 
@@ -365,40 +436,7 @@ function setupCaptcha() {
 }
 
 function wireSignupValidation() {
-  const passwordInput = document.getElementById("signupPassword");
-  const confirmPasswordInput = document.getElementById("signupConfirmPassword");
-  const passwordMessage = document.getElementById("passwordMatchMessage");
   const refreshCaptcha = document.getElementById("refreshCaptcha");
-  if (!passwordInput || !confirmPasswordInput) return;
-
-  const checkPasswords = () => {
-    if (!passwordMessage) return;
-    if (!confirmPasswordInput.value) {
-      passwordMessage.textContent = "";
-      passwordMessage.className = "form-helper hidden";
-      return;
-    }
-
-    if (!isValidPassword(passwordInput.value) || !isValidPassword(confirmPasswordInput.value)) {
-      passwordMessage.textContent = "Password must be at least 6 characters long.";
-      passwordMessage.className = "form-helper error";
-      passwordMessage.classList.remove("hidden");
-      return;
-    }
-
-    if (passwordInput.value === confirmPasswordInput.value) {
-      passwordMessage.textContent = "Passwords match.";
-      passwordMessage.className = "form-helper success";
-      passwordMessage.classList.remove("hidden");
-    } else {
-      passwordMessage.textContent = "Password and confirm password do not match.";
-      passwordMessage.className = "form-helper error";
-      passwordMessage.classList.remove("hidden");
-    }
-  };
-
-  passwordInput.addEventListener("input", checkPasswords);
-  confirmPasswordInput.addEventListener("input", checkPasswords);
   refreshCaptcha?.addEventListener("click", setupCaptcha);
   setupCaptcha();
 }
