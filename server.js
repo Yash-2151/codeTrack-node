@@ -258,6 +258,49 @@ async function cleanupLegacyReviewStatus() {
   ]);
 }
 
+async function migrateLegacyDefaultEmails() {
+  const {
+    users,
+    submissions,
+    progressComments,
+    progressCommentReads,
+    notifications,
+    activityLogs
+  } = collections();
+  const legacyEmailMap = new Map([
+    ["teacher@example.com", "teacher@gmail.com"],
+    ["maya@example.com", "maya@gmail.com"]
+  ]);
+
+  for (const [legacyEmail, gmailEmail] of legacyEmailMap.entries()) {
+    const [legacyUser, gmailUser] = await Promise.all([
+      users.findOne({ email: legacyEmail }),
+      users.findOne({ email: gmailEmail })
+    ]);
+
+    if (!legacyUser && !gmailUser) continue;
+
+    await Promise.all([
+      submissions.updateMany({ studentEmail: legacyEmail }, { $set: { studentEmail: gmailEmail } }),
+      progressComments.updateMany({ studentEmail: legacyEmail }, { $set: { studentEmail: gmailEmail } }),
+      progressComments.updateMany({ authorEmail: legacyEmail }, { $set: { authorEmail: gmailEmail } }),
+      progressCommentReads.updateMany({ studentEmail: legacyEmail }, { $set: { studentEmail: gmailEmail } }),
+      notifications.updateMany({ recipientEmail: legacyEmail }, { $set: { recipientEmail: gmailEmail } }),
+      activityLogs.updateMany({ actorEmail: legacyEmail }, { $set: { actorEmail: gmailEmail } }),
+      activityLogs.updateMany({ "metadata.studentEmail": legacyEmail }, { $set: { "metadata.studentEmail": gmailEmail } })
+    ]);
+
+    if (legacyUser && !gmailUser) {
+      await users.updateOne({ id: legacyUser.id }, { $set: { email: gmailEmail } });
+      continue;
+    }
+
+    if (legacyUser && gmailUser) {
+      await users.deleteOne({ id: legacyUser.id });
+    }
+  }
+}
+
 async function initDatabase() {
   if (db) return db;
   if (!MONGODB_URI) {
@@ -312,6 +355,7 @@ async function initDatabase() {
 
   await cleanupInvalidIds();
   await cleanupLegacyReviewStatus();
+  await migrateLegacyDefaultEmails();
   await seedDatabase();
   await ensureDefaultAccounts();
   return db;
